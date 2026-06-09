@@ -119,7 +119,7 @@
 
     <!-- 画面2: 結果画面 -->
     <div id="screen-2" class="hidden text-center fade-in">
-        <span class="inline-block bg-orange-100 text-accent-orange text-xs font-bold px-3 py-1 rounded-full mb-1">Diagnosis Result</span>
+        <span class="inline-block bg-orange-100 text-accent-orange text-xs font-bold px-3 py-1 rounded-full mb-1">IBJ正規代理店が鑑定した結果はコチラ</span>
         <h2 id="result-user-title" class="text-xl md:text-2xl font-bold text-gray-800 mb-4"></h2>
 
         <!-- チャート表示領域 -->
@@ -165,12 +165,11 @@
 
                 <!-- 公式LINEへの誘導 -->
                 <div class="pt-2 text-xs md:text-sm border-t border-gray-200/60 text-gray-600 space-y-2">
-                    <p>
-                        そこであなたにふさわしい婚活スタイルを<strong>LINEにて提供</strong>しております。期間限定で<strong>婚活スタイルベスト３動画講座</strong>をプレゼント中
-                    </p>
-                    <p>
-                        お友達追加後、<strong>「ベスト３」</strong>と返信してください。プレゼントを送信いたします。質問や疑問もLINEにてアドバイザーがサポートさせて頂きます❤️
-                    </p>
+                    <p>IBJ正規代理店が新しいデータをもとに</p>
+                    <p>あなたに相応しい</p>
+                    <p><strong>婚活スタイルベスト３動画講座</strong>をプレゼント中</p>
+                    <p>LINEに登録後「ベスト３」と返信してください</p>
+                    <p>４１歳の女性が１１人からお見合いを申し込まれた秘話も公開❤️</p>
                 </div>
             </div>
         </div>
@@ -179,13 +178,9 @@
         <button onclick="showLineModal()" class="w-full bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-bold py-4 px-4 rounded-xl transition duration-200 shadow-md flex items-center justify-center gap-2 text-lg">
             <!-- LINEアイコン（SVG） -->
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.295.078.756.037 1.076l-.134.802c-.035.215-.171 1.045.918.587 1.09-.459 5.882-3.468 8.163-6.027C22.68 14.887 24 12.757 24 10.304zM8.384 13.167H6.183c-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64.354 0 .64.286.64.64v3.933h1.561c.354 0 .64.286.64.64 0 .354-.286.64-.64.64zm3.088-.64c0 .354-.286.64-.64.64h-1.56c-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64h1.56c.354 0 .64.286.64.64v4.573zm4.512-4.573v4.573c0 .354-.286.64-.64.64h-1.637c-.173 0-.334-.07-.45-.195l-1.922-2.115v1.67c0 .354-.286.64-.64.64-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64h.166c.17 0 .33.067.447.188l1.928 2.12v-1.668c0-.354.286-.64.64-.64.354 0 .64.286.64.64z"/></svg>
-            動画講座を視聴する
+            LINEに登録する
         </button>
 
-        <!-- 再診断用リンク -->
-        <button id="restart-btn" onclick="nextScreen(0)" class="mt-4 text-xs text-gray-400 hover:text-accent-orange transition underline">
-            もう一度診断する
-        </button>
     </div>
 </div>
 
@@ -228,7 +223,7 @@
     // category: 0:引き寄せ力, 1:プロデュース力, 2:柔軟性, 3:自己肯定感, 4:環境適応力
     const questions = [
         {
-            text: "最近理不尽な事によく遭遇する",
+            text: "１年後の婚活イメージが明確になっている",
             category: 0,
             options: defaultOptions
         },
