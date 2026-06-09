@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>婚活適正診断</title>
+    <!-- Tailwind CSSの読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.jsの読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'accent-orange': '#ff9800',
+                        'soft-blue': '#e3f2fd',
+                        'text-color': '#37474f',
+                        'line-green': '#06C755'
+                    },
+                    backgroundImage: {
+                        'wedding-hall': "url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200')"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* フェードインなどの基本アニメーション */
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* スクロールバー非表示（全体的な一体感のため） */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 152, 0, 0.4);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-wedding-hall bg-cover bg-center text-text-color font-sans min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden">
+
+<!-- 全画面で舞い散る花びら用のCanvas -->
+<canvas id="petal-canvas" class="absolute inset-0 pointer-events-none z-10 w-full h-full"></canvas>
+
+<!-- 全体背景のダークオーバーレイ（文字を読みやすくする） -->
+<div class="absolute inset-0 bg-black/45 z-0"></div>
+
+<!-- メインのカードコンテナ -->
+<div class="relative z-20 max-w-lg w-full bg-white/95 backdrop-blur-md p-6 md:p-8 rounded-2xl shadow-2xl transition-all duration-300 max-h-[92vh] overflow-y-auto">
+
+    <!-- 画面0: スタート画面 -->
+    <div id="screen-0" class="block fade-in">
+        <div class="text-center mb-6">
+            <span class="inline-block bg-orange-100 text-accent-orange text-xs font-bold px-3 py-1 rounded-full mb-2">婚活セルフチェック</span>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-accent-orange leading-tight">婚活適正診断</h1>
+        </div>
+
+        <p class="text-gray-600 mb-6 leading-relaxed text-center text-sm md:text-base">
+            半年がんばっても会えないお悩み…。<br>
+            その原因を7つの質問で解明し、<br>あなたの現状の「ズレ」をチェックします。
+        </p>
+
+        <!-- 名前と年齢の入力フォーム -->
+        <div class="space-y-4 mb-6 bg-orange-50/60 p-4 rounded-xl border border-orange-100">
+            <div class="text-left">
+                <label class="block text-gray-700 text-sm font-bold mb-1.5" for="user-name">お名前（ニックネーム可）</label>
+                <input type="text" id="user-name" placeholder="例：マイ" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-orange bg-white text-gray-800 transition duration-150">
+            </div>
+            <div class="text-left">
+                <label class="block text-gray-700 text-sm font-bold mb-1.5" for="user-age">ご年齢</label>
+                <select id="user-age" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-orange bg-white text-gray-800 transition duration-150">
+                    <option value="">選択してください</option>
+                    <option value="20代前半">20代前半</option>
+                    <option value="20代後半">20代後半</option>
+                    <option value="30代前半">30代前半</option>
+                    <option value="30代後半">30代後半</option>
+                    <option value="40代前半">40代前半</option>
+                    <option value="40代後半">40代後半</option>
+                    <option value="50代以上">50代以上</option>
+                </select>
+            </div>
+            <!-- エラー表示領域 -->
+            <p id="input-error" class="text-red-500 text-xs font-bold hidden text-center">お名前とご年齢を選択してください。</p>
+        </div>
+
+        <button onclick="tryStartDiagnosis()" class="w-full bg-accent-orange hover:bg-orange-500 active:scale-95 text-white font-bold py-4 px-4 rounded-xl transition duration-200 shadow-md text-lg">
+            ズレを診断する
+        </button>
+    </div>
+
+    <!-- 画面1: 質問画面 -->
+    <div id="screen-1" class="hidden fade-in">
+        <div class="flex justify-between items-center mb-2">
+            <span id="question-counter" class="text-sm text-gray-500 font-bold"></span>
+            <span id="user-badge" class="text-xs bg-orange-100 text-accent-orange font-bold px-2.5 py-0.5 rounded-full"></span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-6 overflow-hidden">
+            <div id="progress-bar" class="bg-accent-orange h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- 質問領域 -->
+        <div class="text-center py-4">
+            <h3 id="question-text" class="text-lg md:text-xl font-bold mb-8 min-h-[4rem] text-gray-800 flex items-center justify-center leading-relaxed"></h3>
+        </div>
+
+        <!-- 選択肢ボタンコンテナ -->
+        <div id="choices-container" class="space-y-3"></div>
+    </div>
+
+    <!-- 画面2: 結果画面 -->
+    <div id="screen-2" class="hidden text-center fade-in">
+        <span class="inline-block bg-orange-100 text-accent-orange text-xs font-bold px-3 py-1 rounded-full mb-1">Diagnosis Result</span>
+        <h2 id="result-user-title" class="text-xl md:text-2xl font-bold text-gray-800 mb-4"></h2>
+
+        <!-- チャート表示領域 -->
+        <div class="w-full max-w-xs mx-auto mb-6 relative h-60 bg-orange-50/40 rounded-2xl p-2 border border-orange-100">
+            <canvas id="radarChart"></canvas>
+        </div>
+
+        <!-- 診断文章領域 -->
+        <div class="bg-gradient-to-br from-orange-50 to-amber-50/50 border border-orange-100 p-5 rounded-xl mb-6 text-left shadow-inner">
+            <!-- 診断タイプの名前 -->
+            <div class="border-b-2 border-accent-orange/30 pb-2 mb-4">
+                <span class="text-xs font-bold text-accent-orange tracking-wide uppercase">あなたの婚活タイプ</span>
+                <p id="result-type-name" class="text-lg font-extrabold text-orange-600 mt-0.5"></p>
+            </div>
+
+            <!-- 指摘文章テンプレート -->
+            <div class="space-y-4 text-gray-700 text-sm md:text-base leading-relaxed">
+                <div>
+                    <span class="inline-block bg-accent-orange/10 text-accent-orange text-xs font-bold px-2 py-0.5 rounded mb-1">よくある心理傾向</span>
+                    <p class="font-medium bg-white/60 p-2 rounded border border-orange-100/50">
+                        普段あなたは、婚活において<br>
+                        「<span id="normally-text" class="text-orange-600 font-bold"></span>」<br>
+                        とおもっていませんか？
+                    </p>
+                </div>
+
+                <div>
+                    <span class="inline-block bg-accent-orange/10 text-accent-orange text-xs font-bold px-2 py-0.5 rounded mb-1">発生しているズレ</span>
+                    <p class="font-medium bg-white/60 p-2 rounded border border-orange-100/50">
+                        その場合、<br>
+                        「<span id="detail-text" class="text-orange-600 font-bold"></span>」<br>
+                        な事が多いのではないでしょうか？
+                    </p>
+                </div>
+
+                <!-- 気づきのポイント -->
+                <div class="bg-amber-50 border border-amber-100 p-3 rounded-lg mt-2">
+                    <p class="text-amber-700 font-bold text-xs flex items-center gap-1 mb-1">
+                        💡 気づきのポイント
+                    </p>
+                    <p id="notice-text" class="text-amber-900 text-xs md:text-sm leading-relaxed"></p>
+                </div>
+
+                <!-- 公式LINEへの誘導 -->
+                <div class="pt-2 text-xs md:text-sm border-t border-gray-200/60 text-gray-600 space-y-2">
+                    <p>
+                        そこであなたにふさわしい婚活スタイルを<strong>LINEにて提供</strong>しております。期間限定で<strong>婚活スタイルベスト３動画講座</strong>をプレゼント中
+                    </p>
+                    <p>
+                        お友達追加後、<strong>「ベスト３」</strong>と返信してください。プレゼントを送信いたします。質問や疑問もLINEにてアドバイザーがサポートさせて頂きます❤️
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- LINE登録用ボタン -->
+        <button onclick="showLineModal()" class="w-full bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-bold py-4 px-4 rounded-xl transition duration-200 shadow-md flex items-center justify-center gap-2 text-lg">
+            <!-- LINEアイコン（SVG） -->
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.295.078.756.037 1.076l-.134.802c-.035.215-.171 1.045.918.587 1.09-.459 5.882-3.468 8.163-6.027C22.68 14.887 24 12.757 24 10.304zM8.384 13.167H6.183c-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64.354 0 .64.286.64.64v3.933h1.561c.354 0 .64.286.64.64 0 .354-.286.64-.64.64zm3.088-.64c0 .354-.286.64-.64.64h-1.56c-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64h1.56c.354 0 .64.286.64.64v4.573zm4.512-4.573v4.573c0 .354-.286.64-.64.64h-1.637c-.173 0-.334-.07-.45-.195l-1.922-2.115v1.67c0 .354-.286.64-.64.64-.354 0-.64-.286-.64-.64V7.954c0-.354.286-.64.64-.64h.166c.17 0 .33.067.447.188l1.928 2.12v-1.668c0-.354.286-.64.64-.64.354 0 .64.286.64.64z"/></svg>
+            特別動画講座をLINEで受け取る
+        </button>
+
+        <!-- 再診断用リンク -->
+        <button id="restart-btn" onclick="nextScreen(0)" class="mt-4 text-xs text-gray-400 hover:text-accent-orange transition underline">
+            もう一度診断する
+        </button>
+    </div>
+</div>
+
+<!-- LINEポップアップモーダル (Alert禁止の代わり) -->
+<div id="line-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-6 text-center shadow-2xl relative fade-in">
+        <div class="w-16 h-16 bg-line-green/10 text-line-green rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.12.295.078.756.037 1.076l-.134.802c-.035.215-.171 1.045.918.587 1.09-.459 5.882-3.468 8.163-6.027C22.68 14.887 24 12.757 24 10.304z"/></svg>
+        </div>
+        <h4 class="text-lg font-bold text-gray-800 mb-2">公式LINEへ移動します</h4>
+        <p class="text-xs text-gray-500 mb-6 leading-relaxed">
+            これより公式LINEアカウントの友だち追加画面へと移動します。<br>追加後、すぐに特別動画の配信がスタートします。
+        </p>
+        <div class="space-y-2">
+            <a href="https://lin.ee/qYCi0W9" target="_blank" class="block w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md transition duration-150">
+                LINEを追加する
+            </a>
+            <button onclick="closeLineModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-2 px-4 rounded-xl text-xs transition duration-150">
+                閉じる
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentIdx = 0;
+    let scores = [0, 0, 0, 0, 0];
+    let userName = "";
+    let userAge = "";
+
+    // 共通の標準選択肢
+    const defaultOptions = [
+        { text: 'とても当てはまる', value: 0 },
+        { text: '少し当てはまる', value: 1 },
+        { text: 'あまり当てはまらない', value: 2 },
+        { text: '全く当てはまらない', value: 3 }
+    ];
+
+    // 質問とカテゴリのマッピング
+    // category: 0:引き寄せ力, 1:プロデュース力, 2:柔軟性, 3:自己肯定感, 4:環境適応力
+    const questions = [
+        {
+            text: "不誠実な人に遭遇することが多い",
+            category: 0,
+            options: defaultOptions
+        },
+        {
+            text: "プロフィール写真に満足している",
+            category: 1,
+            options: defaultOptions
+        },
+        {
+            text: "異性に響くPR文を書けている",
+            category: 1,
+            options: [
+                { text: '１０％', value: 0 },
+                { text: '３０％', value: 1 },
+                { text: '６０％', value: 2 },
+                { text: '９０％', value: 3 }
+            ]
+        },
+        {
+            text: "条件を絞りすぎている可能性がある",
+            category: 2,
+            options: defaultOptions
+        },
+        {
+            text: "外見重視はどれくらい？",
+            category: 2,
+            options: [
+                { text: '外見は関係ない', value: 3 },
+                { text: '３０％', value: 2 },
+                { text: '５０％', value: 1 },
+                { text: '７０％', value: 0 }
+            ]
+        },
+        {
+            text: "アプローチは積極的？",
+            category: 3,
+            options: defaultOptions
+        },
+        {
+            text: "自分に合う婚活を知りたい",
+            category: 4,
+            options: [
+                { text: '今の状態で十分', value: 3 },
+                { text: '気になる', value: 2 },
+                { text: '知りたい', value: 1 },
+                { text: '絶対知りたい', value: 0 }
+            ]
+        }
+    ];
+
+    // スプレッドシート連携用GAS Web App URL
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbygGQ924XbZUZTuof8ZLSjGtXRuknrkR8JnK9BvVOvIbmu0QWlmOAhyKPJcUhlIq7_l5w/exec';
+
+    function sendToSpreadsheet(data) {
+        fetch(GAS_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).catch(() => {}); // 通信エラーは無視（診断体験を継続）
+    }
+
+    // 最低点だったカテゴリに応じた診断結果テキストの定義
+    const resultTypes = {
+        0: {
+            typeName: "白馬の騎士待ち型（引き寄せ力のズレ）",
+            normally: "いつか自然に、自分のことをすべて受け入れてくれる理想的なパートナーが現れるはず",
+            detail: "もしかすると、自分からは積極的にアプローチを起こさず「受け身」で待ち続け、せっかくの誠実な出会いやご縁を最初からスルーして逃してしまっている",
+            notice: "人生の時間資産が、出会いを「待つ」ことに使われ、気づけば２年３年とズルズルと過ぎていくかもしれません😅"
+        },
+        1: {
+            typeName: "魅力の宝の持ち腐れ型（プロデュース力のズレ）",
+            normally: "ありのままの自分を最初から好きになってほしい、自己紹介や写真だけで勝手に判断されたくない",
+            detail: "本来のあなたの内面的な良さやお人柄が、異性に届くPRや魅力的な写真として十分にプロデュースできておらず、マッチングやお見合いの成立段階で非常に大きな損をしている",
+            notice: "人生の時間資産が、本当はマッチするはずだった人とすれ違い続けることに使われ、気づけば２年３年とズルズルと過ぎていくかもしれません😅"
+        },
+        2: {
+            typeName: "条件ガチガチ理想こだわり型（柔軟性のズレ）",
+            normally: "絶対に妥協はしたくない。自分の求める完璧なスペックや、ストライクゾーンど真ん中の外見の人以外は会う価値がない",
+            detail: "数字上の条件やパッと見の写真イメージだけで判断してしまい、実際に会えば最高の相性になり得たはずの「隠れた超優良パートナー候補」を自ら次々と除外している",
+            notice: "人生の時間資産が、自分で作った条件のフィルターに使われ、気づけば２年３年とズルズルと過ぎていくかもしれません😅"
+        },
+        3: {
+            typeName: "自己完結あきらめ警戒型（自己肯定感のズレ）",
+            normally: "どうせ自分なんか選ばれない。下手に積極的になって断られたり傷ついたりするのは絶対に嫌だ",
+            detail: "自信のなさから消極的な受け答えや冷めたような態度をとってしまい、お相手に『自分に興味がないのかな』と誤解されて関係が自然消滅してしまっている",
+            notice: "人生の時間資産が、自分への自信を取り戻せないまま使われ、気づけば２年３年とズルズルと過ぎていくかもしれません😅"
+        },
+        4: {
+            typeName: "ミスマッチ環境消耗型（環境適応力のズレ）",
+            normally: "とりあえずみんながやっている知名度の高い相談所やマッチングアプリを続けていれば、いつかは出会えるはず",
+            detail: "あなたの性格や求める将来のライフスタイルと、現在利用しているサービスの会員層やシステムがミスマッチを起こしており、頑張れば頑張るほど気疲れしてエネルギーを消耗している",
+            notice: "人生の時間資産が、自分に合わない環境にエネルギーを吸い取られ続けることに使われ、気づけば２年３年とズルズルと過ぎていくかもしれません😅"
+        }
+    };
+
+    // スタート前バリデーション
+    function tryStartDiagnosis() {
+        try {
+            if (localStorage.getItem('zureShindanDone') === '1') {
+                alert('診断は同じ端末につき１回のみご利用いただけます。');
+                return;
+            }
+        } catch (e) {}
+
+        const nameInput = document.getElementById('user-name');
+        const ageSelect = document.getElementById('user-age');
+        const errorEl = document.getElementById('input-error');
+
+        const name = nameInput.value.trim();
+        const age = ageSelect.value;
+
+        if (!name || !age) {
+            errorEl.classList.remove('hidden');
+            // 未入力要素を視覚的にアピール
+            if(!name) nameInput.classList.add('border-red-400', 'bg-red-50');
+            if(!age) ageSelect.classList.add('border-red-400', 'bg-red-50');
+            return;
+        }
+
+        // クラス初期化
+        nameInput.classList.remove('border-red-400', 'bg-red-50');
+        ageSelect.classList.remove('border-red-400', 'bg-red-50');
+        errorEl.classList.add('hidden');
+
+        userName = name;
+        userAge = age;
+        nextScreen(1);
+    }
+
+    // 画面切り替え処理
+    function nextScreen(id) {
+        // すべての画面を非表示化
+        ['screen-0', 'screen-1', 'screen-2'].forEach(screenId => {
+            const el = document.getElementById(screenId);
+            el.classList.add('hidden');
+            el.classList.remove('block');
+        });
+
+        // ターゲット画面の表示
+        const targetScreen = document.getElementById('screen-' + id);
+        targetScreen.classList.remove('hidden');
+        targetScreen.classList.add('block');
+
+        if (id === 1) {
+            // 診断スタート
+            currentIdx = 0;
+            scores = [0, 0, 0, 0, 0];
+            document.getElementById('user-badge').innerText = `${userName}様 (${userAge})`;
+            stopPetals(); // 質問画面では花びらを止める
+            showQuestion();
+        } else if (id === 2) {
+            // 結果画面
+            startPetals(); // 花びらアニメーション開始
+        } else if (id === 0) {
+            // スタートに戻る
+            stopPetals();
+            document.getElementById('user-name').value = "";
+            document.getElementById('user-age').value = "";
+        }
+    }
+
+    // 質問と選択肢のレンダリング
+    function showQuestion() {
+        const progress = (currentIdx / questions.length) * 100;
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+        document.getElementById('question-counter').innerText = `Q ${currentIdx + 1} / ${questions.length}`;
+
+        const qObj = questions[currentIdx];
+        document.getElementById('question-text').innerText = qObj.text;
+
+        const container = document.getElementById('choices-container');
+        container.innerHTML = '';
+
+        qObj.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'w-full bg-white border border-gray-200 text-gray-700 hover:border-accent-orange hover:bg-orange-50/70 font-bold py-3.5 px-6 rounded-xl transition duration-150 text-left text-sm md:text-base shadow-sm active:scale-[0.98]';
+            btn.innerText = opt.text;
+            btn.onclick = () => {
+                // スコアの加算
+                scores[qObj.category] += opt.value;
+                currentIdx++;
+
+                if (currentIdx < questions.length) {
+                    showQuestion();
+                } else {
+                    drawChart();
+                }
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    // チャート描画と診断判定
+    function drawChart() {
+        nextScreen(2); // 結果画面へ移行
+
+        // 最大得点（引き寄せ力:3, プロデュース:6, 柔軟性:6, 自己肯定感:3, 環境適応力:3）
+        const maxVals = [3, 6, 6, 3, 3];
+        // 100点満点に正規化（点数が高いほど「ズレが少なく優れている状態」）
+        const normalizedScores = scores.map((score, idx) => Math.round((score / maxVals[idx]) * 100));
+
+        // 1番スコアが「低い」項目＝ズレが最大で課題になっている部分を特定
+        // （同点の場合は偏りが出ないようランダムに選択し、5タイプすべてが出現しうるようにする）
+        let minVal = Math.min(...normalizedScores);
+        const minIndices = normalizedScores.reduce((arr, val, idx) => {
+            if (val === minVal) arr.push(idx);
+            return arr;
+        }, []);
+        const minIdx = minIndices[Math.floor(Math.random() * minIndices.length)];
+
+        // 診断内容の動的マッピング
+        const typeData = resultTypes[minIdx];
+
+        // スプレッドシート（婚活状況診断シート）へ送信
+        sendToSpreadsheet({
+            sheet: '婚活状況診断',
+            timestamp: new Date().toLocaleString('ja-JP'),
+            name: userName,
+            age: userAge,
+            type: typeData.typeName,
+            attraction: normalizedScores[0],
+            produce: normalizedScores[1],
+            flexibility: normalizedScores[2],
+            selfEsteem: normalizedScores[3],
+            adaptability: normalizedScores[4]
+        });
+
+        document.getElementById('result-user-title').innerText = `${userName}様（${userAge}）の分析結果`;
+        document.getElementById('result-type-name').innerText = `【${typeData.typeName}】`;
+        document.getElementById('normally-text').innerText = typeData.normally;
+        document.getElementById('detail-text').innerText = typeData.detail;
+        document.getElementById('notice-text').innerText = typeData.notice;
+
+        // 診断済みフラグを保存（同じ端末・ブラウザでは再診断不可にする）
+        try {
+            localStorage.setItem('zureShindanDone', '1');
+        } catch (e) {}
+        const restartBtn = document.getElementById('restart-btn');
+        if (restartBtn) {
+            restartBtn.classList.add('hidden');
+        }
+
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        if (window.myRadarChart) {
+            window.myRadarChart.destroy();
+        }
+
+        window.myRadarChart = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ["引き寄せ力", "プロデュース", "柔軟性", "自己肯定感", "環境適応力"],
+                datasets: [{
+                    label: 'あなたの婚活バランス',
+                    data: normalizedScores,
+                    backgroundColor: 'rgba(255, 152, 0, 0.25)',
+                    borderColor: '#ff9800',
+                    pointBackgroundColor: '#ff9800',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#ff9800',
+                    borderWidth: 2.5,
+                }]
+            },
+            options: {
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(0, 0, 0, 0.08)' },
+                        grid: { color: 'rgba(0, 0, 0, 0.08)' },
+                        pointLabels: {
+                            font: { family: 'sans-serif', size: 10, weight: 'bold' },
+                            color: '#455a64'
+                        },
+                        ticks: {
+                            display: false,
+                            min: 0,
+                            max: 100,
+                            stepSize: 20
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw + '点 (100点満点)';
+                            }
+                        }
+                    }
+                },
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // LINE登録用モーダル表示
+    function showLineModal() {
+        document.getElementById('line-modal').classList.remove('hidden');
+    }
+
+    function closeLineModal() {
+        document.getElementById('line-modal').classList.add('hidden');
+    }
+
+    // 花びら粒子システム
+    let canvas, ctx, animationFrameId;
+    const petals = [];
+
+    class Petal {
+        constructor() {
+            this.reset();
+            // 初期状態は画面にまばらに散らす
+            this.y = Math.random() * canvas.height;
+        }
+
+        reset() {
+            this.x = Math.random() * canvas.width;
+            this.y = -20;
+            this.r = Math.random() * 6 + 4;
+            this.w = Math.random() * 12 + 6; // 横幅
+            this.h = Math.random() * 8 + 4;  // 縦幅
+            this.opacity = Math.random() * 0.5 + 0.5;
+            this.flip = Math.random();
+            this.flipSpeed = Math.random() * 0.02 + 0.01;
+            this.speedX = Math.random() * 1.5 - 0.5; // 風の揺らぎ
+            this.speedY = Math.random() * 1.2 + 0.8; // 落下の速さ
+
+            // バラやサクラをイメージしたピンク〜ホワイト系のグラデーションブレンド
+            const colors = [
+                'rgba(255, 192, 203, ', // プレーンピンク
+                'rgba(255, 182, 193, ', // ライトピンク
+                'rgba(255, 240, 245, ', // ラベンダーブラッシュ
+                'rgba(255, 228, 225, '  // ミスティローズ
+            ];
+            this.colorBase = colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        draw() {
+            // 画面外に落ちたらリセットして上から再登場
+            if (this.y > canvas.height || this.x > canvas.width + 10 || this.x < -10) {
+                this.reset();
+            }
+
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.flip * Math.PI * 0.5);
+            ctx.scale(this.flip, 1);
+            ctx.fillStyle = this.colorBase + this.opacity + ')';
+
+            // 楕円を描いてリアルな花びらの形状を模倣する
+            ctx.ellipse(0, 0, this.w, this.h, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+
+            this.y += this.speedY;
+            this.x += this.speedX;
+            this.flip += this.flipSpeed;
+        }
+    }
+
+    function startPetals() {
+        canvas = document.getElementById('petal-canvas');
+        ctx = canvas.getContext('2d');
+        resizeCanvas();
+
+        petals.length = 0;
+        // 花びらの総量
+        const petalCount = 45;
+        for (let i = 0; i < petalCount; i++) {
+            petals.push(new Petal());
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        animatePetals();
+    }
+
+    function resizeCanvas() {
+        if (canvas) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+    }
+
+    function animatePetals() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        petals.forEach(p => p.draw());
+        animationFrameId = requestAnimationFrame(animatePetals);
+    }
+
+    function stopPetals() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        if (ctx && canvas) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+</script>
+</body>
+</html>
