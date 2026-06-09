@@ -66,8 +66,8 @@
         </div>
 
         <p class="text-gray-600 mb-6 leading-relaxed text-center text-sm md:text-base">
-            半年がんばっても会えないお悩み…。<br>
-            その原因を7つの質問で解明し、<br>あなたの現状の「ズレ」をチェックします。
+            半年がんばっても会えないお悩み…<br>
+            その原因を7つの質問で解明し、<br>改善のステップをお伝えします
         </p>
 
         <!-- 名前と年齢の入力フォーム -->
@@ -94,7 +94,7 @@
         </div>
 
         <button onclick="tryStartDiagnosis()" class="w-full bg-accent-orange hover:bg-orange-500 active:scale-95 text-white font-bold py-4 px-4 rounded-xl transition duration-200 shadow-md text-lg">
-            ズレを診断する
+            診断スタート
         </button>
     </div>
 
@@ -327,13 +327,6 @@
 
     // スタート前バリデーション
     function tryStartDiagnosis() {
-        try {
-            if (localStorage.getItem('zureShindanDone') === '1') {
-                alert('診断は同じ端末につき１回のみご利用いただけます。');
-                return;
-            }
-        } catch (e) {}
-
         const nameInput = document.getElementById('user-name');
         const ageSelect = document.getElementById('user-age');
         const errorEl = document.getElementById('input-error');
@@ -463,13 +456,9 @@
         document.getElementById('detail-text').innerText = typeData.detail;
         document.getElementById('notice-text').innerText = typeData.notice;
 
-        // 診断済みフラグを保存（同じ端末・ブラウザでは再診断不可にする）
-        try {
-            localStorage.setItem('zureShindanDone', '1');
-        } catch (e) {}
         const restartBtn = document.getElementById('restart-btn');
         if (restartBtn) {
-            restartBtn.classList.add('hidden');
+            restartBtn.classList.remove('hidden');
         }
 
         const ctx = document.getElementById('radarChart').getContext('2d');
